@@ -83,3 +83,19 @@ input {
   border: 1px solid #ccc;
   margin: 10px 0 20px;
 }
+
+.levels {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+
+.levels button {
+  background: #00b894;
+}
+
+.levels button:hover {
+  background: #009b7a;
+}

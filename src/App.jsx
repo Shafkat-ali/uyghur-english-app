@@ -1,67 +1,28 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import "./App.css";
-
-const starterWords = {
-  greetings: ["hello", "goodbye", "yes", "no", "please", "thanks"],
-  family: ["mother", "father", "sister", "brother", "child", "baby"],
-  food: ["water", "food", "bread", "rice", "apple", "milk"],
-  school: ["book", "pen", "teacher", "student", "school", "lesson"],
-  home: ["house", "room", "door", "chair", "table", "bed"],
-};
-
-const uyghurMap = {
-  hello: "ياخشىمۇسىز",
-  goodbye: "خەير خوش",
-  yes: "ھەئە",
-  no: "ياق",
-  please: "ئىلتىماس",
-  thanks: "رەھمەت",
-  mother: "ئانا",
-  father: "دادا",
-  sister: "ئاچا / سىڭىل",
-  brother: "ئاكا / ئىنى",
-  child: "بالا",
-  baby: "بوۋاق",
-  water: "سۇ",
-  food: "تاماق",
-  bread: "نان",
-  rice: "گۈرۈچ",
-  apple: "ئالما",
-  milk: "سۈت",
-  book: "كىتاب",
-  pen: "قەلەم",
-  teacher: "ئوقۇتقۇچى",
-  student: "ئوقۇغۇچى",
-  school: "مەكتەپ",
-  lesson: "دەرس",
-  house: "ئۆي",
-  room: "ياتاق / ئۆي",
-  door: "ئىشىك",
-  chair: "ئورۇندۇق",
-  table: "جەدۋەل / ئۈستەل",
-  bed: "كارىۋات",
-};
+import { uyghurDictionary } from "./data/uyghurDictionary";
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 function App() {
   const [page, setPage] = useState("home");
-  const [category, setCategory] = useState("greetings");
-  const [words, setWords] = useState(starterWords.greetings);
-  const [selectedWord, setSelectedWord] = useState("hello");
-  const [definition, setDefinition] = useState(null);
-  const [quizWord, setQuizWord] = useState("water");
+  const [level, setLevel] = useState("beginner");
+  const [search, setSearch] = useState("");
+  const [selectedWord, setSelectedWord] = useState(null);
+  const [englishData, setEnglishData] = useState(null);
+  const [quizWord, setQuizWord] = useState(uyghurDictionary[0]);
   const [answer, setAnswer] = useState("");
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    setWords(starterWords[category]);
-    setSelectedWord(starterWords[category][0]);
-  }, [category]);
-
-  useEffect(() => {
-    getDefinition(selectedWord);
-  }, [selectedWord]);
+  const words = useMemo(() => {
+    return uyghurDictionary.filter((item) => {
+      const matchesLevel = item.level === level;
+      const matchesSearch =
+        item.english.toLowerCase().includes(search.toLowerCase()) ||
+        item.uyghur.includes(search);
+      return matchesLevel && matchesSearch;
+    });
+  }, [level, search]);
 
   const speak = (text) => {
     const utter = new SpeechSynthesisUtterance(text);
@@ -69,37 +30,27 @@ function App() {
     speechSynthesis.speak(utter);
   };
 
-  const getDefinition = async (word) => {
-    try {
-      const res = await fetch(
-        `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`
-      );
-      const data = await res.json();
-      setDefinition(data[0]);
-    } catch {
-      setDefinition(null);
-    }
-  };
+  const searchEnglishDictionary = async (word) => {
+    setSelectedWord(word);
+    setEnglishData(null);
 
-  const getMoreWords = async () => {
     try {
       const res = await fetch(
-        `https://api.datamuse.com/words?ml=${category}&max=20`
+        `https://api.dictionaryapi.dev/api/v2/entries/en/${word.english}`
       );
       const data = await res.json();
-      const newWords = data.map((item) => item.word).slice(0, 12);
-      setWords(newWords);
-      setSelectedWord(newWords[0]);
+      setEnglishData(data[0]);
     } catch {
-      alert("Could not load more words.");
+      setEnglishData(null);
     }
   };
 
   const checkQuiz = () => {
-    if (answer.trim().toLowerCase() === quizWord.toLowerCase()) {
+    if (answer.trim().toLowerCase() === quizWord.english.toLowerCase()) {
       setMessage("Correct! 🎉");
-      const allWords = Object.values(starterWords).flat();
-      setQuizWord(allWords[Math.floor(Math.random() * allWords.length)]);
+      const levelWords = uyghurDictionary.filter((w) => w.level === level);
+      const next = levelWords[Math.floor(Math.random() * levelWords.length)];
+      setQuizWord(next);
       setAnswer("");
     } else {
       setMessage("Try again ❌");
@@ -110,136 +61,133 @@ function App() {
     <div className="app">
       <header>
         <h1>Uyghur English Learning</h1>
-        <p>Beginner English for Uyghur speakers</p>
+        <p>Beginner, Intermediate, and Advanced English for Uyghur speakers</p>
       </header>
 
       <nav>
         <button onClick={() => setPage("home")}>Home</button>
         <button onClick={() => setPage("alphabet")}>Alphabet</button>
-        <button onClick={() => setPage("vocab")}>Vocabulary</button>
-        <button onClick={() => setPage("sentences")}>Sentences</button>
+        <button onClick={() => setPage("dictionary")}>Dictionary</button>
+        <button onClick={() => setPage("sentence")}>Sentences</button>
         <button onClick={() => setPage("quiz")}>Quiz</button>
       </nav>
+
+      <div className="levels">
+        <button onClick={() => setLevel("beginner")}>Beginner</button>
+        <button onClick={() => setLevel("intermediate")}>Intermediate</button>
+        <button onClick={() => setLevel("advanced")}>Advanced</button>
+      </div>
 
       {page === "home" && (
         <section className="card">
           <h2>Welcome 👋</h2>
           <p>
-            Learn English letters, sounds, beginner words, definitions,
-            sentence building, and quizzes.
+            Choose your level, learn words, listen to pronunciation, build
+            sentences, and test yourself.
           </p>
         </section>
       )}
 
       {page === "alphabet" && (
         <section>
-          <h2>Alphabet & Sounds</h2>
+          <h2>Alphabet Sounds</h2>
           <div className="grid">
             {alphabet.map((letter) => (
               <div className="card" key={letter}>
                 <h3>{letter}</h3>
-                <button onClick={() => speak(letter)}>Hear Sound</button>
+                <button onClick={() => speak(letter)}>Listen</button>
               </div>
             ))}
           </div>
         </section>
       )}
 
-      {page === "vocab" && (
+      {page === "dictionary" && (
         <section>
-          <h2>Vocabulary</h2>
+          <h2>Dictionary - {level}</h2>
 
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            {Object.keys(starterWords).map((cat) => (
-              <option key={cat}>{cat}</option>
-            ))}
-          </select>
-
-          <button onClick={getMoreWords}>Load More Words From API</button>
+          <input
+            placeholder="Search English or Uyghur..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
 
           <div className="grid">
             {words.map((word) => (
-              <div
-                className={`card ${selectedWord === word ? "active" : ""}`}
-                key={word}
-                onClick={() => setSelectedWord(word)}
-              >
-                <h3>{word}</h3>
-                <p className="uyghur">{uyghurMap[word] || "Uyghur coming soon"}</p>
-                <button onClick={() => speak(word)}>Listen</button>
+              <div className="card" key={word.english}>
+                <h3>{word.english}</h3>
+                <p className="uyghur">{word.uyghur}</p>
+                <p>{word.category}</p>
+
+                <button onClick={() => speak(word.english)}>Listen</button>
+                <button onClick={() => searchEnglishDictionary(word)}>
+                  Details
+                </button>
               </div>
             ))}
           </div>
 
-          <div className="card">
-            <h2>Word Detail</h2>
-            <h3>{selectedWord}</h3>
-            <p className="uyghur">{uyghurMap[selectedWord] || "Uyghur coming soon"}</p>
+          {selectedWord && (
+            <div className="card">
+              <h2>{selectedWord.english}</h2>
+              <p className="uyghur">{selectedWord.uyghur}</p>
 
-            {definition ? (
-              <>
-                <p>
-                  <strong>Phonetic:</strong>{" "}
-                  {definition.phonetic || "Not available"}
-                </p>
+              <h3>Example</h3>
+              <p>{selectedWord.sentence}</p>
+              <p className="uyghur">{selectedWord.sentenceUyghur}</p>
 
-                <p>
-                  <strong>Definition:</strong>{" "}
-                  {definition.meanings?.[0]?.definitions?.[0]?.definition ||
-                    "No definition found."}
-                </p>
-
-                <p>
-                  <strong>Example:</strong>{" "}
-                  {definition.meanings?.[0]?.definitions?.[0]?.example ||
-                    "No example found."}
-                </p>
-              </>
-            ) : (
-              <p>No dictionary data found.</p>
-            )}
-          </div>
+              <h3>English Dictionary Data</h3>
+              {englishData ? (
+                <>
+                  <p>
+                    <strong>Phonetic:</strong>{" "}
+                    {englishData.phonetic || "Not available"}
+                  </p>
+                  <p>
+                    <strong>Definition:</strong>{" "}
+                    {englishData.meanings?.[0]?.definitions?.[0]?.definition ||
+                      "Not available"}
+                  </p>
+                </>
+              ) : (
+                <p>No English dictionary data found yet.</p>
+              )}
+            </div>
+          )}
         </section>
       )}
 
-      {page === "sentences" && (
-        <section className="card">
-          <h2>Sentence Making</h2>
+      {page === "sentence" && (
+        <section>
+          <h2>Sentence Practice - {level}</h2>
 
-          <p>Pattern:</p>
-          <h3>I like ____.</h3>
-
-          {words.map((word) => (
-            <button key={word} onClick={() => speak(`I like ${word}`)}>
-              I like {word}.
-            </button>
-          ))}
-
-          <hr />
-
-          <h3>More examples</h3>
-          <p>I drink water.</p>
-          <p>I read a book.</p>
-          <p>I go to school.</p>
-          <p>This is my mother.</p>
+          <div className="grid">
+            {words.map((word) => (
+              <div className="card" key={word.english}>
+                <h3>{word.sentence}</h3>
+                <p className="uyghur">{word.sentenceUyghur}</p>
+                <button onClick={() => speak(word.sentence)}>Listen</button>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
       {page === "quiz" && (
         <section className="card">
-          <h2>Quiz Game</h2>
-          <p>Type the English word for:</p>
+          <h2>Quiz - {level}</h2>
+          <p>Type the English meaning:</p>
 
-          <h1 className="uyghur big">{uyghurMap[quizWord]}</h1>
+          <h1 className="uyghur big">{quizWord.uyghur}</h1>
 
           <input
+            placeholder="Type English word..."
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Type English word"
           />
 
           <button onClick={checkQuiz}>Check</button>
-          <button onClick={() => speak(quizWord)}>Hint Sound</button>
+          <button onClick={() => speak(quizWord.english)}>Hint Sound</button>
 
           <h3>{message}</h3>
         </section>
